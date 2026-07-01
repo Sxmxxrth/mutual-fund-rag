@@ -14,8 +14,9 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_openai import ChatOpenAI
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate
 
 
 # ============================================================
@@ -145,34 +146,26 @@ class RAGQueryEngine:
             temperature=0.1,
             api_key=os.getenv("OPENAI_API_KEY"),
         )
-        self.prompt = PromptTemplate(
-            template=RAG_PROMPT_TEMPLATE,
-            input_variables=["context", "question"],
-        )
-        self.qa_chain = RetrievalQA.from_chain_type(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=self.retriever,
-            chain_type_kwargs={"prompt": self.prompt},
-            return_source_documents=True,
-        )
+        self.prompt = ChatPromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
+        question_answer_chain = create_stuff_documents_chain(self.llm, self.prompt)
+        self.qa_chain = create_retrieval_chain(self.retriever, question_answer_chain)
 
     def query(self, question: str) -> dict:
         """
         Query the RAG pipeline.
         Returns answer and source documents.
         """
-        result = self.qa_chain.invoke({"query": question})
+        result = self.qa_chain.invoke({"input": question})
         sources = [
             {
                 "content": doc.page_content[:200],
                 "source": doc.metadata.get("source", "Unknown"),
                 "page": doc.metadata.get("page", "N/A"),
             }
-            for doc in result.get("source_documents", [])
+            for doc in result.get("context", [])
         ]
         return {
-            "answer": result["result"],
+            "answer": result["answer"],
             "sources": sources,
             "num_sources": len(sources),
         }

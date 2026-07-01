@@ -1,151 +1,48 @@
-# 📄 Mutual Fund RAG Assistant
+# 🏦 Mutual Fund RAG Assistant
 
-> A production-ready Retrieval-Augmented Generation system for querying mutual fund documents using LangChain, ChromaDB, and Streamlit.
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
+[![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=flat&logo=langchain&logoColor=white)](https://langchain.com/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue)
-![LangChain](https://img.shields.io/badge/LangChain-0.3+-green)
-![ChromaDB](https://img.shields.io/badge/ChromaDB-0.5+-orange)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+An end-to-end Retrieval-Augmented Generation (RAG) system that converts complex mutual fund PDFs into a highly accurate, searchable vector database for natural language Q&A.
 
-## 🎯 Problem Statement
+## 🌟 Key Engineering Features
+- **Advanced Retrieval**: Utilizes ChromaDB and FAISS with Maximal Marginal Relevance (MMR) for diverse and highly accurate context fetching.
+- **Modern LangChain LCEL**: Fully updated to use the latest LangChain Expression Language (`create_retrieval_chain`) for robust orchestration.
+- **RAGAS Evaluated**: Achieved **0.81 Context Precision** using the RAGAS evaluation framework.
+- **Containerized Stack**: Fully dockerized application ensuring a reproducible environment.
 
-Mutual fund documents (SIDs, factsheets, annual reports) are dense, lengthy PDFs that are difficult to navigate. Investors and advisors need quick, accurate answers from these documents.
+## 🏗️ System Architecture
+`User UI (Streamlit) -> LCEL Pipeline -> Embeddings (SentenceTransformers) -> Vector Store (ChromaDB) -> LLM (GPT-4o-mini)`
 
-**Solution**: A RAG pipeline that ingests mutual fund PDFs, creates semantic embeddings, and enables natural language Q&A with source citations.
+## 🚀 Quick Start (Using Docker)
 
-## 🏗️ Architecture
+The easiest way to run this project is via Docker. Ensure you have Docker and docker-compose installed.
 
-```
-PDF Documents → [Ingestion Pipeline] → [Chunking] → [Embeddings] → ChromaDB
-                                                                        ↓
-User Question → [Query Engine] → [Semantic Search] → [LLM + Context] → Answer
-```
-
-### Pipeline Components:
-1. **Document Ingestion**: PDF parsing with PyPDF2/pdfplumber
-2. **Text Chunking**: RecursiveCharacterTextSplitter (512 tokens, 50 overlap)
-3. **Embedding Generation**: sentence-transformers/all-MiniLM-L6-v2
-4. **Vector Storage**: ChromaDB (persistent storage)
-5. **Retrieval**: Hybrid search (semantic + keyword BM25)
-6. **Generation**: LLM with retrieved context + source citations
-
-## 📊 Benchmark Results (RAGAS)
-
-| Metric | Score |
-|--------|-------|
-| Context Precision | **0.81** |
-| Answer Relevancy | **0.78** |
-| Faithfulness | **0.85** |
-| Context Recall | **0.76** |
-
-## 🛠️ Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| Framework | LangChain |
-| Vector DB | ChromaDB |
-| Embeddings | sentence-transformers |
-| LLM | OpenAI GPT-4 / Local (Ollama) |
-| Backend | FastAPI |
-| Frontend | Streamlit |
-| Evaluation | RAGAS |
-
-## 🚀 Quick Start
-
-### 1. Setup
 ```bash
+# 1. Clone the repository
 git clone https://github.com/Sxmxxrth/mutual-fund-rag.git
 cd mutual-fund-rag
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+
+# 2. Add your API Key
+export OPENAI_API_KEY="your-api-key-here"
+
+# 3. Start the application
+make docker-up
 ```
 
-### 2. Ingest Documents
+Access the UI at `http://localhost:8501`.
+
+## 🧪 Development (Local Setup)
+
+If you want to run it without Docker:
 ```bash
-# Place PDFs in the data/documents/ directory
-python ingest.py --input data/documents/ --collection mutual_funds
+# Install dependencies
+make install
+
+# Optional: Ingest new PDFs placed in ./data/documents
+make ingest
+
+# Run the UI
+make run
 ```
-
-### 3. Run the App
-```bash
-# Streamlit UI
-streamlit run app.py
-
-# FastAPI backend
-uvicorn api:app --reload --port 8000
-```
-
-### 4. Query
-```bash
-# API
-curl -X POST http://localhost:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What is the expense ratio of HDFC Balanced Fund?"}'
-```
-
-## 📁 Project Structure
-
-```
-mutual-fund-rag/
-├── app.py               # Streamlit frontend
-├── api.py               # FastAPI backend
-├── ingest.py            # Document ingestion script
-├── rag/
-│   ├── __init__.py
-│   ├── chunker.py       # Text chunking strategies
-│   ├── embedder.py      # Embedding generation
-│   ├── retriever.py     # Hybrid retrieval (semantic + BM25)
-│   ├── generator.py     # LLM response generation
-│   └── pipeline.py      # End-to-end RAG pipeline
-├── evaluation/
-│   ├── evaluate.py      # RAGAS evaluation script
-│   └── test_questions.json
-├── data/
-│   ├── documents/       # Input PDFs
-│   └── chroma_db/       # Vector store
-├── config/
-│   └── settings.py
-├── tests/
-│   ├── test_chunker.py
-│   ├── test_retriever.py
-│   └── test_pipeline.py
-├── requirements.txt
-├── Dockerfile
-└── README.md
-```
-
-## 🧪 Testing
-
-```bash
-# Unit tests
-pytest tests/ -v
-
-# RAG evaluation
-python evaluation/evaluate.py
-```
-
-## 🐳 Docker
-
-```bash
-docker build -t mutual-fund-rag .
-docker run -p 8501:8501 --env-file .env mutual-fund-rag
-```
-
-## 💡 Key Design Decisions
-
-1. **Hybrid Retrieval**: Combining semantic search with BM25 keyword matching improves recall by ~15% over pure semantic search
-2. **Chunk Size**: 512 tokens with 50-token overlap balances context completeness with retrieval precision
-3. **Prompt Engineering**: Custom prompt template with explicit instructions to cite sources and handle "I don't know" cases
-4. **Evaluation**: RAGAS framework for systematic quality measurement
-
-## 📝 License
-
-MIT License
-
-## 👤 Author
-
-**Samarth Sugandhi**
-- GitHub: [@Sxmxxrth](https://github.com/Sxmxxrth)
-- LinkedIn: [samarthz](https://linkedin.com/in/samarthz)
-- Email: samarthz.icloud@gmail.com
