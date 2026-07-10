@@ -1,48 +1,41 @@
-# 🏦 Mutual Fund RAG Assistant
+# 🏦 Mutual Fund Advanced RAG Assistant
 
-[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
-[![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=flat&logo=langchain&logoColor=white)](https://langchain.com/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
+A production-grade **Retrieval-Augmented Generation (RAG)** API designed specifically for analyzing complex financial documents, Mutual Fund Factsheets, and Prospectuses. 
 
-An end-to-end Retrieval-Augmented Generation (RAG) system that converts complex mutual fund PDFs into a highly accurate, searchable vector database for natural language Q&A.
+This is not a standard tutorial RAG. It implements an advanced **Retrieve-and-ReRank** architecture to drastically reduce LLM hallucinations when dealing with exact financial figures.
 
-## 🌟 Key Engineering Features
-- **Advanced Retrieval**: Utilizes ChromaDB and FAISS with Maximal Marginal Relevance (MMR) for diverse and highly accurate context fetching.
-- **Modern LangChain LCEL**: Fully updated to use the latest LangChain Expression Language (`create_retrieval_chain`) for robust orchestration.
-- **RAGAS Evaluated**: Achieved **0.81 Context Precision** using the RAGAS evaluation framework.
-- **Containerized Stack**: Fully dockerized application ensuring a reproducible environment.
+## 🚀 Advanced Architecture Highlights
 
-## 🏗️ System Architecture
-`User UI (Streamlit) -> LCEL Pipeline -> Embeddings (SentenceTransformers) -> Vector Store (ChromaDB) -> LLM (GPT-4o-mini)`
+1. **Semantic Chunking:** Uses `RecursiveCharacterTextSplitter` heavily tuned (800 token chunk size, 150 token overlap) to ensure financial tables and paragraphs are not split midway.
+2. **Dense Vector Retrieval:** Uses `BAAI/bge-small-en-v1.5` embeddings via **ChromaDB** for hyper-fast Initial Retrieval of the top 10 relevant context chunks.
+3. **Cross-Encoder Re-Ranking:** **(The Key Differentiator)** Standard Cosine Similarity is often flawed for specific text comparisons. This pipeline passes the Top 10 retrieved chunks through a Deep Learning `Cross-Encoder` (`ms-marco-MiniLM-L-6-v2`) which mathematically scores the exact relevance between the user's query and the chunk, re-ranking them to ensure the LLM only sees the absolute most relevant data.
+4. **LLM Synthesis:** Synthesizes the finalized context securely using **LangChain Expression Language (LCEL)** and OpenAI's models with a strict financial prompt preventing hallucination.
+5. **Production Backend:** Fully decoupled API built with **FastAPI** for instant frontend integration.
 
-## 🚀 Quick Start (Using Docker)
+## 🛠 Tech Stack
+- **API Framework:** FastAPI, Uvicorn, Pydantic
+- **RAG Orchestration:** LangChain (LCEL)
+- **Vector Database:** ChromaDB
+- **Embeddings & Re-Ranking:** HuggingFace `sentence-transformers`, `Cross-Encoder`
+- **LLM:** OpenAI (`gpt-3.5-turbo`)
 
-The easiest way to run this project is via Docker. Ensure you have Docker and docker-compose installed.
+## 💻 How to Run Locally
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/Sxmxxrth/mutual-fund-rag.git
-cd mutual-fund-rag
+1. Create a virtual environment and install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Copy the environment variables template and add your OpenAI API Key:
+   ```bash
+   cp .env.example .env
+   # Edit .env and insert your OPENAI_API_KEY
+   ```
+3. Boot the FastAPI Server:
+   ```bash
+   uvicorn main:app --reload
+   ```
+4. Access the interactive Swagger UI at: `http://localhost:8000/docs`
 
-# 2. Add your API Key
-export OPENAI_API_KEY="your-api-key-here"
-
-# 3. Start the application
-make docker-up
-```
-
-Access the UI at `http://localhost:8501`.
-
-## 🧪 Development (Local Setup)
-
-If you want to run it without Docker:
-```bash
-# Install dependencies
-make install
-
-# Optional: Ingest new PDFs placed in ./data/documents
-make ingest
-
-# Run the UI
-make run
-```
+## 📊 API Endpoints
+* `POST /api/v1/ingest`: Upload a Mutual Fund PDF to instantly vectorize and store it in ChromaDB.
+* `POST /api/v1/query`: Ask financial questions (e.g. *"What is the expense ratio?"*) and receive precise, cross-encoder validated answers.
